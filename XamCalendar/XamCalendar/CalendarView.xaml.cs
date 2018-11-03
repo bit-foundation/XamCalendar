@@ -1,14 +1,10 @@
 ﻿using NodaTime;
+using Rg.Plugins.Popup.Services;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Globalization;
-using System.Linq;
 using System.Windows.Input;
 using Xamarin.Forms;
-using Xamarin.Forms.Xaml;
-
-[assembly: XamlCompilation(XamlCompilationOptions.Compile)]
 
 namespace XamCalendar
 {
@@ -18,170 +14,127 @@ namespace XamCalendar
         {
             InitializeComponent();
 
-            SelectDateCommand = new Command<CalendarDay>(SelectDate);
+            CalendarPopupView = new CalendarPopupView() { };
 
-            ShowNextMonthCommand = new Command(ShowNextMonth);
+            CalendarPopupView.SetBinding(CalendarPopupView.CultureProperty, new Binding(nameof(Culture), source: this));
+            CalendarPopupView.SetBinding(CalendarPopupView.CalendarSystemProperty, new Binding(nameof(CalendarSystem), source: this));
+            CalendarPopupView.SetBinding(CalendarPopupView.SelectedColorProperty, new Binding(nameof(SelectedColor), source: this));
+            CalendarPopupView.SetBinding(CalendarPopupView.TodayColorProperty, new Binding(nameof(TodayColor), source: this));
+            CalendarPopupView.SetBinding(CalendarPopupView.SelectedDateProperty, new Binding(nameof(SelectedDate), source: this));
+            CalendarPopupView.SetBinding(CalendarPopupView.FontFamilyProperty, new Binding(nameof(FontFamily), source: this));
+            CalendarPopupView.SetBinding(FlowDirectionProperty, new Binding(nameof(FlowDirection), source: this));
 
-            ShowPreviousMonthCommand = new Command(ShowPreviousMonth);
-
-            CurrentDay = new LocalDate(DateTimeOffset.Now.Year, DateTimeOffset.Now.Month, DateTimeOffset.Now.Day, CalendarSystem.Gregorian);
-
-            CalcCurrentMonthDays();
+            OpenPopupCommand = new Command(OpenPopup);
         }
 
-        public virtual void ShowNextMonth()
+        public virtual void OpenPopup()
         {
-            CurrentDay = LocalDate.Add(CurrentDay, Period.FromMonths(1));
-            CalcCurrentMonthDays();
+            PopupNavigation.Instance.PushAsync(CalendarPopupView);
         }
 
-        public virtual void ShowPreviousMonth()
-        {
-            CurrentDay = LocalDate.Subtract(CurrentDay, Period.FromMonths(1));
-            CalcCurrentMonthDays();
-        }
+        public virtual CalendarPopupView CalendarPopupView { get; protected set; }
+        public virtual ICommand OpenPopupCommand { get; protected set; }
 
-        public virtual void SelectDate(CalendarDay selectedDay)
-        {
-            foreach (CalendarDay day in Days)
-            {
-                if (day == null)
-                    continue;
-
-                day.IsSelected = day == selectedDay ? true : false;
-
-                if (day.IsSelected)
-                    SelectedDate = day.LocalDate.ToDateTimeUnspecified();
-            }
-        }
-
-        public virtual void CalcCurrentMonthDays()
-        {
-            DayOfWeek firstDayOfWeekOfCurrentCulture = Culture.DateTimeFormat.FirstDayOfWeek;
-
-            DaysOfWeek = Enum.GetValues(typeof(DayOfWeek))
-               .Cast<DayOfWeek>()
-               .OrderBy(d => (d - firstDayOfWeekOfCurrentCulture + 7) % 7)
-               .Select((d, i) => new DayOfWeekInfo
-               {
-                   DayOfWeekNumber = i + 1,
-                   IsoDayOfWeek = (IsoDayOfWeek)Enum.Parse(typeof(IsoDayOfWeek), d.ToString()),
-                   DayOfWeekName = Culture.DateTimeFormat.GetAbbreviatedDayName(d)
-               })
-               .ToList();
-
-            DaysOfWeekNames = DaysOfWeek.Select(d => d.DayOfWeekName).ToArray();
-
-            if (CalendarSystem != CalendarSystemProperty.DefaultValue)
-                CurrentDay = CurrentDay.WithCalendar(CalendarSystem);
-
-            CalendarTitle = CurrentDay.ToString("MMM yyyy", Culture);
-
-            int thisMonthDaysCount = CurrentDay.Calendar.GetDaysInMonth(CurrentDay.Year, CurrentDay.Month);
-
-            LocalDate firstDayOfMonth = CurrentDay;
-
-            while (firstDayOfMonth.Day != 1)
-            {
-                firstDayOfMonth = LocalDate.Subtract(firstDayOfMonth, Period.FromDays(1));
-            }
-
-            DayOfWeekInfo firstDayOfMonthDayOfWeek = DaysOfWeek.Single(d => d.IsoDayOfWeek == firstDayOfMonth.DayOfWeek);
-
-            int prevMonthDaysInCurrentMonthView = (firstDayOfMonthDayOfWeek.DayOfWeekNumber - 1);
-            int nextMonthDaysInCurrentMonthView = 42 - thisMonthDaysCount - prevMonthDaysInCurrentMonthView;
-
-            Days = new List<CalendarDay>(42);
-
-            LocalDate today = new LocalDate(DateTimeOffset.Now.Year, DateTimeOffset.Now.Month, DateTimeOffset.Now.Day, CalendarSystem.Gregorian).WithCalendar(CalendarSystem);
-
-            for (int i = 0; i < prevMonthDaysInCurrentMonthView; i++)
-            {
-                Days.Add(null);
-            }
-
-            for (int i = 1; i <= thisMonthDaysCount; i++)
-            {
-                Days.Add(new CalendarDay
-                {
-                    LocalDate = new LocalDate(CurrentDay.Year, CurrentDay.Month, i, CurrentDay.Calendar),
-                    IsToday = today.Year == CurrentDay.Year && today.Month == CurrentDay.Month && today.Day == i ? true : false
-                });
-            }
-
-            for (int i = 0; i < nextMonthDaysInCurrentMonthView; i++)
-            {
-                Days.Add(null);
-            }
-        }
-
-        public virtual string CalendarTitle { get; protected set; }
-        public virtual string[] DaysOfWeekNames { get; protected set; }
-        public virtual List<CalendarDay> Days { get; protected set; }
-        public virtual LocalDate CurrentDay { get; protected set; }
-        public virtual List<DayOfWeekInfo> DaysOfWeek { get; protected set; }
-
-        public virtual ICommand SelectDateCommand { get; protected set; }
-        public virtual ICommand ShowNextMonthCommand { get; protected set; }
-        public virtual ICommand ShowPreviousMonthCommand { get; protected set; }
-
-        public static BindableProperty CultureProperty = BindableProperty.Create(nameof(Culture), typeof(CultureInfo), typeof(CalendarView), defaultValue: CultureInfo.CurrentUICulture, defaultBindingMode: BindingMode.OneTime, propertyChanged: (sender, oldValue, newValue) =>
-        {
-            CalendarView calendarView = (CalendarView)sender;
-            calendarView.CalcCurrentMonthDays();
-        });
-
-        public CultureInfo Culture
+        public static BindableProperty CultureProperty = BindableProperty.Create(nameof(Culture), typeof(CultureInfo), typeof(CalendarView), defaultValue: CultureInfo.CurrentUICulture, defaultBindingMode: BindingMode.OneWay);
+        [TypeConverter(typeof(StringToCultureInfoConverter))]
+        public virtual CultureInfo Culture
         {
             get { return (CultureInfo)GetValue(CultureProperty); }
             set { SetValue(CultureProperty, value); }
         }
 
-        public static BindableProperty CalendarSystemProperty = BindableProperty.Create(nameof(CalendarSystem), typeof(CalendarSystem), typeof(CalendarView), defaultValue: CalendarSystem.Gregorian, defaultBindingMode: BindingMode.OneTime, propertyChanged: (sender, oldValue, newValue) =>
-        {
-            CalendarView calendarView = (CalendarView)sender;
-            calendarView.CalcCurrentMonthDays();
-        });
-
-        public CalendarSystem CalendarSystem
+        public static BindableProperty CalendarSystemProperty = BindableProperty.Create(nameof(CalendarSystem), typeof(CalendarSystem), typeof(CalendarView), defaultValue: CalendarSystem.Gregorian, defaultBindingMode: BindingMode.OneWay);
+        public virtual CalendarSystem CalendarSystem
         {
             get { return (CalendarSystem)GetValue(CalendarSystemProperty); }
             set { SetValue(CalendarSystemProperty, value); }
         }
 
-        public static readonly BindableProperty FontFamilyProperty = BindableProperty.Create(nameof(FontFamily), typeof(string), typeof(CalendarDayView), defaultValue: null, defaultBindingMode: BindingMode.OneTime);
-
-        public string FontFamily
+        public static readonly BindableProperty FontFamilyProperty = BindableProperty.Create(nameof(FontFamily), typeof(string), typeof(CalendarView), defaultValue: null, defaultBindingMode: BindingMode.OneWay);
+        public virtual string FontFamily
         {
             get { return (string)GetValue(FontFamilyProperty); }
             set { SetValue(FontFamilyProperty, value); }
         }
 
-        public static BindableProperty SelectedDateProperty = BindableProperty.Create(nameof(SelectedDate), typeof(DateTime?), typeof(CalendarView), defaultValue: null, defaultBindingMode: BindingMode.OneTime);
-
-        // ToDo: SelectedDate must be two way
-
-        public DateTime? SelectedDate
+        public static BindableProperty SelectedDateProperty = BindableProperty.Create(nameof(SelectedDate), typeof(DateTime?), typeof(CalendarView), defaultValue: null, defaultBindingMode: BindingMode.OneWayToSource /*Must be two way*/);
+        public virtual DateTime? SelectedDate
         {
             get { return (DateTime?)GetValue(SelectedDateProperty); }
             set { SetValue(SelectedDateProperty, value); }
         }
+
+        public static BindableProperty TodayColorProperty = BindableProperty.Create(nameof(TodayColor), typeof(Color), typeof(CalendarView), defaultValue: Color.DeepPink, defaultBindingMode: BindingMode.OneWay);
+        public virtual Color TodayColor
+        {
+            get { return (Color)GetValue(TodayColorProperty); }
+            set { SetValue(TodayColorProperty, value); }
+        }
+
+        public static BindableProperty SelectedColorProperty = BindableProperty.Create(nameof(SelectedColor), typeof(Color), typeof(CalendarView), defaultValue: Color.DeepPink, defaultBindingMode: BindingMode.OneWay);
+        public virtual Color SelectedColor
+        {
+            get { return (Color)GetValue(SelectedColorProperty); }
+            set { SetValue(SelectedColorProperty, value); }
+        }
+
+        public static readonly BindableProperty DateDisplayFormatProperty = BindableProperty.Create(nameof(DateDisplayFormat), typeof(string), typeof(CalendarView), defaultValue: null, defaultBindingMode: BindingMode.OneWay);
+        public virtual string DateDisplayFormat
+        {
+            get { return (string)GetValue(DateDisplayFormatProperty); }
+            set { SetValue(DateDisplayFormatProperty, value); }
+        }
+
+        public virtual string Text { get; set; }
+
+        public virtual string DisplayText
+        {
+            get
+            {
+                if (SelectedDate != null)
+                {
+                    return new LocalDate(SelectedDate.Value.Year, SelectedDate.Value.Month, SelectedDate.Value.Day, CalendarSystem.Gregorian)
+                         .WithCalendar(CalendarSystem)
+                         .ToString(DateDisplayFormat ?? Culture.DateTimeFormat.ShortDatePattern, Culture);
+
+                }
+                else
+                {
+                    return Text;
+                }
+            }
+        }
     }
 
-    public class DayOfWeekInfo : INotifyPropertyChanged
+    public class StringToCultureInfoConverter : TypeConverter
     {
-        public IsoDayOfWeek IsoDayOfWeek { get; set; }
+        private static readonly Dictionary<string, CultureInfo> _CultureInfoCache;
 
-        /// <summary>
-        /// Based on current culture.
-        /// </summary>
-        public string DayOfWeekName { get; set; }
+        static StringToCultureInfoConverter()
+        {
+            CultureInfo Fa = new CultureInfo("Fa");
 
-        /// <summary>
-        /// Based on current culture.
-        /// </summary>
-        public int DayOfWeekNumber { get; set; }
+            Fa.DateTimeFormat.MonthNames = Fa.DateTimeFormat.AbbreviatedMonthGenitiveNames = Fa.DateTimeFormat.MonthGenitiveNames = Fa.DateTimeFormat.AbbreviatedMonthNames = new[] { "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند", "" };
 
-        public event PropertyChangedEventHandler PropertyChanged;
+            CultureInfo Ar = new CultureInfo("Ar");
+
+            Ar.DateTimeFormat.DayNames = Ar.DateTimeFormat.AbbreviatedDayNames = Ar.DateTimeFormat.ShortestDayNames = new[] { "الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت" };
+
+            _CultureInfoCache = new Dictionary<string, CultureInfo>
+            {
+                { "Fa", Fa },
+                { "Ar", Ar }
+            };
+        }
+
+        public static CultureInfo GetCultureInfo(string cultureName)
+        {
+            return _CultureInfoCache.ContainsKey(cultureName) ? _CultureInfoCache[cultureName] : CultureInfo.GetCultureInfo(cultureName);
+        }
+
+        public override object ConvertFromInvariantString(string value)
+        {
+            return GetCultureInfo(value);
+        }
     }
 }

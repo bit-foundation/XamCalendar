@@ -19,9 +19,12 @@ namespace XamCalendar.UWP
 
         protected override void OnLaunched(LaunchActivatedEventArgs e)
         {
+
             if (!(Window.Current.Content is Frame rootFrame))
             {
                 rootFrame = new Frame();
+
+                Rg.Plugins.Popup.Popup.Init();
 
                 Xamarin.Forms.Forms.Init(e);
 

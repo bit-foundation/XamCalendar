@@ -16,6 +16,9 @@ namespace XamCalendar.Droid
 
             base.OnCreate(savedInstanceState);
 
+            Forms.SetFlags("FastRenderers_Experimental");
+            Rg.Plugins.Popup.Popup.Init(this, savedInstanceState);
+
             Forms.Init(this, savedInstanceState);
 
             LoadApplication(new App());

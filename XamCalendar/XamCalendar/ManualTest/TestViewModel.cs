@@ -2,7 +2,7 @@
 
 namespace XamCalendar
 {
-    public class TestViewModel : INotifyPropertyChanged
+    public class TestViewModel : INotifyPropertyChanged 
     {
         public event PropertyChangedEventHandler PropertyChanged;
     }

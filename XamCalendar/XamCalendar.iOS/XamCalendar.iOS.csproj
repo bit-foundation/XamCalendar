@@ -51,8 +51,15 @@
   <ItemGroup>
     <Compile Include="Main.cs" />
     <Compile Include="AppDelegate.cs" />
-    <None Include="Entitlements.plist" />
-    <None Include="Info.plist" />
+    <BundleResource Include="..\XamCalendar.UWP\Assets\Vazir-Light-FD-WOL.ttf">
+      <Link>Resources\Vazir-Light-FD-WOL.ttf</Link>
+    </BundleResource>
+    <None Include="Entitlements.plist">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Info.plist">
+      <SubType>Designer</SubType>
+    </None>
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

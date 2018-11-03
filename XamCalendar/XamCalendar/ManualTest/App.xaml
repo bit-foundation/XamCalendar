@@ -3,8 +3,27 @@
     x:Class="XamCalendar.App"
     xmlns="http://xamarin.com/schemas/2014/forms"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:app="clr-namespace:XamCalendar">
-    <Application.MainPage>
-        <app:TestView />
-    </Application.MainPage>
+    xmlns:calendar="clr-namespace:XamCalendar;assembly=XamCalendar"
+    xmlns:culture="clr-namespace:System.Globalization;assembly=netstandard"
+    xmlns:noda="clr-namespace:NodaTime;assembly=NodaTime">
+    <Application.Resources>
+        <ResourceDictionary>
+            <OnPlatform x:Key="Persian-Solar-Calendar-FontFamily" x:TypeArguments="x:String">
+                <On Platform="iOS" Value="Vazir FD-WOL" />
+                <On Platform="UWP" Value="Assets/Vazir-Light-FD-WOL.ttf#Vazir FD-WOL" />
+                <On Platform="Android" Value="Vazir-Light-FD-WOL.ttf#Vazir FD-WOL" />
+            </OnPlatform>
+            <Style x:Key="Persian-Solar-Calendar" TargetType="calendar:CalendarView">
+                <Setter Property="FontFamily" Value="{StaticResource Persian-Solar-Calendar-FontFamily}" />
+                <Setter Property="FlowDirection" Value="RightToLeft" />
+                <Setter Property="CalendarSystem" Value="{x:Static noda:CalendarSystem.PersianArithmetic}" />
+                <Setter Property="Culture" Value="Fa" />
+            </Style>
+            <Style x:Key="Islamic-Calendar" TargetType="calendar:CalendarView">
+                <Setter Property="FlowDirection" Value="RightToLeft" />
+                <Setter Property="CalendarSystem" Value="{x:Static noda:CalendarSystem.IslamicBcl}" />
+                <Setter Property="Culture" Value="Ar" />
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
 </Application>
